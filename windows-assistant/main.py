@@ -9,7 +9,7 @@ import mss
 
 APP_NAME = "iGOT Smart Learning Assistant"
 SERVICE = "igot-smart-learning-gemini"
-MODEL = "gemini-2.5-flash"
+MODEL = "gemini-3.8-flash"
 
 
 def resource_path(relative):
