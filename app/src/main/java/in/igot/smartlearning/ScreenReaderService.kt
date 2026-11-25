@@ -1,4 +1,4 @@
-package in.igot.smartlearning
+package `in`.igot.smartlearning
 
 import android.app.*
 import android.content.*
