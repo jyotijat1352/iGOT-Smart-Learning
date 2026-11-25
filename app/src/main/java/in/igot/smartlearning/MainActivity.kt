@@ -1,4 +1,4 @@
-package in.igot.smartlearning
+package `in`.igot.smartlearning
 
 import android.app.Activity
 import android.os.Bundle
@@ -37,7 +37,7 @@ class MainActivity : Activity() {
         val title = TextView(this).apply { text = "iGOT Smart Learning"; textSize = 25f; setTextColor(Color.rgb(25,45,80)); typeface = Typeface.DEFAULT_BOLD }
         val subtitle = TextView(this).apply { text = "आपका सीखने और समझने का साथी"; textSize = 17f; setPadding(0,8,0,16); setTextColor(Color.DKGRAY) }
         val intro = TextView(this).apply { text = "प्रश्न या विषय लिखें। AI उससे जुड़ी अवधारणा को हिंदी या English में समझाएगा। आधिकारिक मूल्यांकन में उत्तर चुनना और Submit करना आपका अपना निर्णय रहेगा।"; textSize = 15f; setTextColor(Color.DKGRAY) }
-        val key = EditText(this).apply { hint = "Gemini API key (केवल इस मोबाइल में सेव होगी)"; singleLine = true; textSize = 14f; inputType = 0x00000081; setText(securePrefs.getString("gemini_api_key", "")) }
+        val key = EditText(this).apply { hint = "Gemini API key (केवल इस मोबाइल में सेव होगी)"; setSingleLine(true); textSize = 14f; inputType = 0x00000081; setText(securePrefs.getString("gemini_api_key", "")) }
         val saveKey = Button(this).apply { text = "API Key सुरक्षित सेव करें" }
         val language = Spinner(this).apply { adapter = ArrayAdapter(this@MainActivity, android.R.layout.simple_spinner_dropdown_item, listOf("हिंदी में समझाएँ", "Explain in English", "Hindi + English")) }
         val question = EditText(this).apply { hint = "यहाँ प्रश्न या विषय लिखें…"; minLines = 3; gravity = Gravity.TOP; textSize = 16f; setText(intent.getStringExtra("captured_question") ?: "") }
