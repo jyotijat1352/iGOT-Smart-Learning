@@ -15,6 +15,11 @@ import java.io.OutputStreamWriter
 import java.util.concurrent.Executors
 import androidx.security.crypto.EncryptedSharedPreferences
 import androidx.security.crypto.MasterKey
+import android.content.Intent
+import com.google.mlkit.vision.common.InputImage
+import com.google.mlkit.vision.text.TextRecognition
+import com.google.mlkit.vision.text.latin.TextRecognizerOptions
+import com.google.mlkit.vision.text.devanagari.DevanagariTextRecognizerOptions
 
 class MainActivity : Activity() {
     private val worker = Executors.newSingleThreadExecutor()
@@ -33,6 +38,8 @@ class MainActivity : Activity() {
         val saveKey = Button(this).apply { text = "API Key सुरक्षित सेव करें" }
         val language = Spinner(this).apply { adapter = ArrayAdapter(this@MainActivity, android.R.layout.simple_spinner_dropdown_item, listOf("हिंदी में समझाएँ", "Explain in English", "Hindi + English")) }
         val question = EditText(this).apply { hint = "यहाँ प्रश्न या विषय लिखें…"; minLines = 3; gravity = Gravity.TOP; textSize = 16f }
+        val scan = Button(this).apply { text = "iGOT स्क्रीनशॉट से प्रश्न पढ़ें (OCR)" }
+        scan.setOnClickListener { val intent = Intent(Intent.ACTION_GET_CONTENT).apply { type = "image/*" }; startActivityForResult(Intent.createChooser(intent, "iGOT का स्क्रीनशॉट चुनें"), 210) }
         val explain = Button(this).apply { text = "AI से समझें" }
         val progress = ProgressBar(this).apply { visibility = View.GONE }
         val result = TextView(this).apply { text = "AI की व्याख्या यहाँ दिखाई देगी।"; textSize = 16f; setPadding(0,14,0,0); setTextColor(Color.BLACK) }
@@ -55,8 +62,31 @@ class MainActivity : Activity() {
             }
         }
         root.addView(title); root.addView(subtitle); root.addView(intro); root.addView(key); root.addView(saveKey)
-        root.addView(language); root.addView(question, LinearLayout.LayoutParams(-1, 0, 1f)); root.addView(explain); root.addView(progress); root.addView(result)
+        root.addView(language); root.addView(scan); root.addView(question, LinearLayout.LayoutParams(-1, 0, 1f)); root.addView(explain); root.addView(progress); root.addView(result)
         setContentView(ScrollView(this).apply { addView(root) })
+    }
+
+    @Deprecated("Legacy activity result callback for broad Android compatibility")
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+        super.onActivityResult(requestCode, resultCode, data)
+        if (requestCode != 210 || resultCode != RESULT_OK || data?.data == null) return
+        Toast.makeText(this, "स्क्रीनशॉट पढ़ा जा रहा है…", Toast.LENGTH_SHORT).show()
+        try {
+            val image = InputImage.fromFilePath(this, data.data!!)
+            val latin = TextRecognition.getClient(TextRecognizerOptions.DEFAULT_OPTIONS)
+            val devanagari = TextRecognition.getClient(DevanagariTextRecognizerOptions.Builder().build())
+            latin.process(image).addOnSuccessListener { latinText ->
+                devanagari.process(image).addOnSuccessListener { devanagariText ->
+                    val combined = listOf(latinText.text, devanagariText.text).filter { it.isNotBlank() }.distinct().joinToString("\n")
+                    val scroll = findViewById<android.view.ViewGroup>(android.R.id.content).getChildAt(0) as ScrollView
+                    val root = scroll.getChildAt(0) as LinearLayout
+                    val field = (0 until root.childCount).map { root.getChildAt(it) }.filterIsInstance<EditText>().first { it.hint?.toString()?.contains("प्रश्न") == true }
+                    field.setText(combined)
+                    Toast.makeText(this, if (combined.isBlank()) "पढ़ने योग्य टेक्स्ट नहीं मिला।" else "टेक्स्ट पढ़ लिया गया। अब AI से समझें दबाएँ।", Toast.LENGTH_LONG).show()
+                    latin.close(); devanagari.close()
+                }.addOnFailureListener { e -> Toast.makeText(this, "हिंदी OCR में समस्या: ${e.localizedMessage}", Toast.LENGTH_LONG).show(); latin.close(); devanagari.close() }
+            }.addOnFailureListener { e -> Toast.makeText(this, "OCR असफल: ${e.localizedMessage}", Toast.LENGTH_LONG).show(); latin.close(); devanagari.close() }
+        } catch (e: Exception) { Toast.makeText(this, "चित्र नहीं खुला: ${e.localizedMessage}", Toast.LENGTH_LONG).show() }
     }
 
     private fun askGemini(apiKey: String, question: String, language: String): String {
