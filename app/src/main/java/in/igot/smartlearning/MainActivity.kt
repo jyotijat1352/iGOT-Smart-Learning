@@ -31,17 +31,17 @@ class MainActivity : Activity() {
         val intro = TextView(this).apply { text = "प्रश्न या विषय लिखें। AI उससे जुड़ी अवधारणा को हिंदी या English में समझाएगा। आधिकारिक मूल्यांकन में उत्तर चुनना और Submit करना आपका अपना निर्णय रहेगा।"; textSize = 15f; setTextColor(Color.DKGRAY) }
         val key = EditText(this).apply { hint = "Gemini API key (केवल इस मोबाइल में सेव होगी)"; singleLine = true; textSize = 14f; inputType = 0x00000081; setText(securePrefs.getString("gemini_api_key", "")) }
         val saveKey = Button(this).apply { text = "API Key सुरक्षित सेव करें" }
+        val language = Spinner(this).apply { adapter = ArrayAdapter(this@MainActivity, android.R.layout.simple_spinner_dropdown_item, listOf("हिंदी में समझाएँ", "Explain in English", "Hindi + English")) }
+        val question = EditText(this).apply { hint = "यहाँ प्रश्न या विषय लिखें…"; minLines = 3; gravity = Gravity.TOP; textSize = 16f }
+        val explain = Button(this).apply { text = "AI से समझें" }
+        val progress = ProgressBar(this).apply { visibility = View.GONE }
+        val result = TextView(this).apply { text = "AI की व्याख्या यहाँ दिखाई देगी।"; textSize = 16f; setPadding(0,14,0,0); setTextColor(Color.BLACK) }
         saveKey.setOnClickListener {
             val value = key.text.toString().trim()
             if (value.isBlank()) { result.text = "पहले API Key दर्ज करें।"; return@setOnClickListener }
             securePrefs.edit().putString("gemini_api_key", value).apply()
             result.text = "API Key इस फोन में सुरक्षित सेव हो गई है। इसे GitHub या चैट में साझा न करें।"
         }
-        val language = Spinner(this).apply { adapter = ArrayAdapter(this@MainActivity, android.R.layout.simple_spinner_dropdown_item, listOf("हिंदी में समझाएँ", "Explain in English", "Hindi + English")) }
-        val question = EditText(this).apply { hint = "यहाँ प्रश्न या विषय लिखें…"; minLines = 3; gravity = Gravity.TOP; textSize = 16f }
-        val explain = Button(this).apply { text = "AI से समझें" }
-        val progress = ProgressBar(this).apply { visibility = View.GONE }
-        val result = TextView(this).apply { text = "AI की व्याख्या यहाँ दिखाई देगी।"; textSize = 16f; setPadding(0,14,0,0); setTextColor(Color.BLACK) }
         explain.setOnClickListener {
             val apiKey = key.text.toString().trim()
             val prompt = question.text.toString().trim()
