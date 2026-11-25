@@ -6,6 +6,13 @@ plugins {
 android {
     namespace = "in.igot.smartlearning"
     compileSdk = 36
+    compileOptions {
+        sourceCompatibility = JavaVersion.VERSION_17
+        targetCompatibility = JavaVersion.VERSION_17
+    }
+    kotlinOptions {
+        jvmTarget = "17"
+    }
     defaultConfig {
         applicationId = "in.igot.smartlearning"
         minSdk = 26
