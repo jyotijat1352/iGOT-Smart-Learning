@@ -13,16 +13,30 @@ import java.net.URL
 import java.net.URLEncoder
 import java.io.OutputStreamWriter
 import java.util.concurrent.Executors
+import androidx.security.crypto.EncryptedSharedPreferences
+import androidx.security.crypto.MasterKey
 
 class MainActivity : Activity() {
     private val worker = Executors.newSingleThreadExecutor()
+    private lateinit var securePrefs: android.content.SharedPreferences
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        val masterKey = MasterKey.Builder(this).setKeyScheme(MasterKey.KeyScheme.AES256_GCM).build()
+        securePrefs = EncryptedSharedPreferences.create(this, "secure_settings", masterKey,
+            EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV,
+            EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM)
         val root = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; setPadding(22, 26, 22, 20); setBackgroundColor(Color.rgb(247,248,252)) }
         val title = TextView(this).apply { text = "iGOT Smart Learning"; textSize = 25f; setTextColor(Color.rgb(25,45,80)); typeface = Typeface.DEFAULT_BOLD }
         val subtitle = TextView(this).apply { text = "आपका सीखने और समझने का साथी"; textSize = 17f; setPadding(0,8,0,16); setTextColor(Color.DKGRAY) }
         val intro = TextView(this).apply { text = "प्रश्न या विषय लिखें। AI उससे जुड़ी अवधारणा को हिंदी या English में समझाएगा। आधिकारिक मूल्यांकन में उत्तर चुनना और Submit करना आपका अपना निर्णय रहेगा।"; textSize = 15f; setTextColor(Color.DKGRAY) }
-        val key = EditText(this).apply { hint = "Gemini API key (इस डिवाइस पर ही दर्ज करें)"; singleLine = true; textSize = 14f; inputType = 0x00000081 }
+        val key = EditText(this).apply { hint = "Gemini API key (केवल इस मोबाइल में सेव होगी)"; singleLine = true; textSize = 14f; inputType = 0x00000081; setText(securePrefs.getString("gemini_api_key", "")) }
+        val saveKey = Button(this).apply { text = "API Key सुरक्षित सेव करें" }
+        saveKey.setOnClickListener {
+            val value = key.text.toString().trim()
+            if (value.isBlank()) { result.text = "पहले API Key दर्ज करें।"; return@setOnClickListener }
+            securePrefs.edit().putString("gemini_api_key", value).apply()
+            result.text = "API Key इस फोन में सुरक्षित सेव हो गई है। इसे GitHub या चैट में साझा न करें।"
+        }
         val language = Spinner(this).apply { adapter = ArrayAdapter(this@MainActivity, android.R.layout.simple_spinner_dropdown_item, listOf("हिंदी में समझाएँ", "Explain in English", "Hindi + English")) }
         val question = EditText(this).apply { hint = "यहाँ प्रश्न या विषय लिखें…"; minLines = 3; gravity = Gravity.TOP; textSize = 16f }
         val explain = Button(this).apply { text = "AI से समझें" }
@@ -40,7 +54,7 @@ class MainActivity : Activity() {
                 runOnUiThread { result.text = answer; explain.isEnabled = true; progress.visibility = View.GONE }
             }
         }
-        root.addView(title); root.addView(subtitle); root.addView(intro); root.addView(key)
+        root.addView(title); root.addView(subtitle); root.addView(intro); root.addView(key); root.addView(saveKey)
         root.addView(language); root.addView(question, LinearLayout.LayoutParams(-1, 0, 1f)); root.addView(explain); root.addView(progress); root.addView(result)
         setContentView(ScrollView(this).apply { addView(root) })
     }
