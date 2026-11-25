@@ -20,6 +20,7 @@ import com.google.mlkit.vision.text.devanagari.DevanagariTextRecognizerOptions
 
 class ScreenReaderService : Service() {
     private var projection: MediaProjection? = null
+    private var projectionCallback: MediaProjection.Callback? = null
     private var display: VirtualDisplay? = null
     private var reader: ImageReader? = null
     private var overlay: View? = null
@@ -46,6 +47,16 @@ class ScreenReaderService : Service() {
         val width = metrics.widthPixels
         val height = metrics.heightPixels
         reader = ImageReader.newInstance(width, height, PixelFormat.RGBA_8888, 2)
+        projectionCallback = object : MediaProjection.Callback() {
+            override fun onStop() {
+                display?.release()
+                display = null
+                reader?.close()
+                reader = null
+                stopSelf()
+            }
+        }
+        projection?.registerCallback(projectionCallback!!, handler)
         display = projection?.createVirtualDisplay("iGOT-screen-reader", width, height, metrics.densityDpi,
             DisplayManager.VIRTUAL_DISPLAY_FLAG_AUTO_MIRROR, reader?.surface, null, handler)
     }
@@ -116,7 +127,9 @@ class ScreenReaderService : Service() {
 
     override fun onDestroy() {
         try { overlay?.let { windowManager?.removeView(it) } } catch (_: Exception) {}
-        display?.release(); reader?.close(); projection?.stop()
+        display?.release(); reader?.close()
+        try { projectionCallback?.let { projection?.unregisterCallback(it) } } catch (_: Exception) {}
+        projection?.stop()
         overlay = null; display = null; reader = null; projection = null
         super.onDestroy()
     }
