@@ -16,6 +16,9 @@ import java.util.concurrent.Executors
 import androidx.security.crypto.EncryptedSharedPreferences
 import androidx.security.crypto.MasterKey
 import android.content.Intent
+import android.media.projection.MediaProjectionManager
+import android.provider.Settings
+import android.net.Uri
 import com.google.mlkit.vision.common.InputImage
 import com.google.mlkit.vision.text.TextRecognition
 import com.google.mlkit.vision.text.latin.TextRecognizerOptions
@@ -37,9 +40,13 @@ class MainActivity : Activity() {
         val key = EditText(this).apply { hint = "Gemini API key (केवल इस मोबाइल में सेव होगी)"; singleLine = true; textSize = 14f; inputType = 0x00000081; setText(securePrefs.getString("gemini_api_key", "")) }
         val saveKey = Button(this).apply { text = "API Key सुरक्षित सेव करें" }
         val language = Spinner(this).apply { adapter = ArrayAdapter(this@MainActivity, android.R.layout.simple_spinner_dropdown_item, listOf("हिंदी में समझाएँ", "Explain in English", "Hindi + English")) }
-        val question = EditText(this).apply { hint = "यहाँ प्रश्न या विषय लिखें…"; minLines = 3; gravity = Gravity.TOP; textSize = 16f }
-        val scan = Button(this).apply { text = "iGOT स्क्रीनशॉट से प्रश्न पढ़ें (OCR)" }
-        scan.setOnClickListener { val intent = Intent(Intent.ACTION_GET_CONTENT).apply { type = "image/*" }; startActivityForResult(Intent.createChooser(intent, "iGOT का स्क्रीनशॉट चुनें"), 210) }
+        val question = EditText(this).apply { hint = "यहाँ प्रश्न या विषय लिखें…"; minLines = 3; gravity = Gravity.TOP; textSize = 16f; setText(intent.getStringExtra("captured_question") ?: "") }
+        val scan = Button(this).apply { text = "बिना स्क्रीनशॉट के iGOT स्क्रीन पढ़ें" }
+        scan.setOnClickListener {
+            if (!Settings.canDrawOverlays(this@MainActivity)) {
+                startActivityForResult(Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION, Uri.parse("package:$packageName")), 310)
+            } else requestScreenCapture()
+        }
         val explain = Button(this).apply { text = "AI से समझें" }
         val progress = ProgressBar(this).apply { visibility = View.GONE }
         val result = TextView(this).apply { text = "AI की व्याख्या यहाँ दिखाई देगी।"; textSize = 16f; setPadding(0,14,0,0); setTextColor(Color.BLACK) }
@@ -66,27 +73,26 @@ class MainActivity : Activity() {
         setContentView(ScrollView(this).apply { addView(root) })
     }
 
+    private fun requestScreenCapture() {
+        val manager = getSystemService(MEDIA_PROJECTION_SERVICE) as MediaProjectionManager
+        startActivityForResult(manager.createScreenCaptureIntent(), 311)
+    }
+
     @Deprecated("Legacy activity result callback for broad Android compatibility")
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
         super.onActivityResult(requestCode, resultCode, data)
-        if (requestCode != 210 || resultCode != RESULT_OK || data?.data == null) return
-        Toast.makeText(this, "स्क्रीनशॉट पढ़ा जा रहा है…", Toast.LENGTH_SHORT).show()
-        try {
-            val image = InputImage.fromFilePath(this, data.data!!)
-            val latin = TextRecognition.getClient(TextRecognizerOptions.DEFAULT_OPTIONS)
-            val devanagari = TextRecognition.getClient(DevanagariTextRecognizerOptions.Builder().build())
-            latin.process(image).addOnSuccessListener { latinText ->
-                devanagari.process(image).addOnSuccessListener { devanagariText ->
-                    val combined = listOf(latinText.text, devanagariText.text).filter { it.isNotBlank() }.distinct().joinToString("\n")
-                    val scroll = findViewById<android.view.ViewGroup>(android.R.id.content).getChildAt(0) as ScrollView
-                    val root = scroll.getChildAt(0) as LinearLayout
-                    val field = (0 until root.childCount).map { root.getChildAt(it) }.filterIsInstance<EditText>().first { it.hint?.toString()?.contains("प्रश्न") == true }
-                    field.setText(combined)
-                    Toast.makeText(this, if (combined.isBlank()) "पढ़ने योग्य टेक्स्ट नहीं मिला।" else "टेक्स्ट पढ़ लिया गया। अब AI से समझें दबाएँ।", Toast.LENGTH_LONG).show()
-                    latin.close(); devanagari.close()
-                }.addOnFailureListener { e -> Toast.makeText(this, "हिंदी OCR में समस्या: ${e.localizedMessage}", Toast.LENGTH_LONG).show(); latin.close(); devanagari.close() }
-            }.addOnFailureListener { e -> Toast.makeText(this, "OCR असफल: ${e.localizedMessage}", Toast.LENGTH_LONG).show(); latin.close(); devanagari.close() }
-        } catch (e: Exception) { Toast.makeText(this, "चित्र नहीं खुला: ${e.localizedMessage}", Toast.LENGTH_LONG).show() }
+        if (requestCode == 310) {
+            if (Settings.canDrawOverlays(this)) requestScreenCapture()
+            else Toast.makeText(this, "फ्लोटिंग बटन के लिए स्क्रीन पर दिखाने की अनुमति जरूरी है।", Toast.LENGTH_LONG).show()
+            return
+        }
+        if (requestCode == 311) {
+            if (resultCode == RESULT_OK && data != null) {
+                val service = Intent(this, ScreenReaderService::class.java).putExtra("resultCode", resultCode).putExtra("data", data)
+                if (android.os.Build.VERSION.SDK_INT >= 26) startForegroundService(service) else startService(service)
+                Toast.makeText(this, "अब iGOT खोलें। स्क्रीन पर दिखने वाले बटन से प्रश्न पढ़ें।", Toast.LENGTH_LONG).show()
+            } else Toast.makeText(this, "स्क्रीन पढ़ने की अनुमति नहीं मिली।", Toast.LENGTH_SHORT).show()
+        }
     }
 
     private fun askGemini(apiKey: String, question: String, language: String): String {
