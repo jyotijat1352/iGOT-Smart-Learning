@@ -18,5 +18,5 @@ android {
 dependencies {
     implementation("androidx.security:security-crypto:1.1.0-alpha06")
     implementation("com.google.mlkit:text-recognition-devanagari:16.0.1")
-    implementation("com.google.mlkit:text-recognition-latin:16.0.1")
+    implementation("com.google.mlkit:text-recognition:16.0.1")
 }
