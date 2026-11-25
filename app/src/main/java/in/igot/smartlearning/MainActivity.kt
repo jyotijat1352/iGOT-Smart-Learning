@@ -33,15 +33,15 @@ class MainActivity : Activity() {
         securePrefs = EncryptedSharedPreferences.create(this, "secure_settings", masterKey,
             EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV,
             EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM)
-        val root = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; setPadding(22, 26, 22, 20); setBackgroundColor(Color.rgb(247,248,252)) }
-        val title = TextView(this).apply { text = "iGOT Smart Learning"; textSize = 25f; setTextColor(Color.rgb(25,45,80)); typeface = Typeface.DEFAULT_BOLD }
-        val subtitle = TextView(this).apply { text = "आपका सीखने और समझने का साथी"; textSize = 17f; setPadding(0,8,0,16); setTextColor(Color.DKGRAY) }
-        val intro = TextView(this).apply { text = "प्रश्न या विषय लिखें। AI उससे जुड़ी अवधारणा को हिंदी या English में समझाएगा। आधिकारिक मूल्यांकन में उत्तर चुनना और Submit करना आपका अपना निर्णय रहेगा।"; textSize = 15f; setTextColor(Color.DKGRAY) }
+        val root = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; setPadding(12, 12, 12, 12); setBackgroundColor(Color.rgb(247,248,252)) }
+        val title = TextView(this).apply { text = "iGOT Smart Learning"; textSize = 20f; setTextColor(Color.rgb(25,45,80)); typeface = Typeface.DEFAULT_BOLD }
+        val subtitle = TextView(this).apply { text = "आपका सीखने और समझने का साथी"; textSize = 14f; setPadding(0,4,0,8); setTextColor(Color.DKGRAY) }
+        val intro = TextView(this).apply { text = "Split Screen में iGOT ऊपर और यह ऐप नीचे रखें। ऊपर प्रश्न देखकर यहाँ लिखें; AI उसे समझाएगा।"; textSize = 15f; setTextColor(Color.DKGRAY) }
         val key = EditText(this).apply { hint = "Gemini API key (केवल इस मोबाइल में सेव होगी)"; setSingleLine(true); textSize = 14f; inputType = 0x00000081; setText(securePrefs.getString("gemini_api_key", "")) }
         val saveKey = Button(this).apply { text = "API Key सुरक्षित सेव करें" }
         val language = Spinner(this).apply { adapter = ArrayAdapter(this@MainActivity, android.R.layout.simple_spinner_dropdown_item, listOf("हिंदी में समझाएँ", "Explain in English", "Hindi + English")) }
-        val question = EditText(this).apply { hint = "यहाँ प्रश्न या विषय लिखें…"; minLines = 3; gravity = Gravity.TOP; textSize = 16f; setText(intent.getStringExtra("captured_question") ?: "") }
-        val scan = Button(this).apply { text = "बिना स्क्रीनशॉट के iGOT स्क्रीन पढ़ें" }
+        val question = EditText(this).apply { hint = "ऊपर iGOT में दिख रहा प्रश्न यहाँ लिखें…"; minLines = 2; maxLines = 5; gravity = Gravity.TOP; textSize = 15f; setText(intent.getStringExtra("captured_question") ?: "") }
+        val scan = TextView(this).apply { text = "नोट: iGOT की सुरक्षा के कारण स्क्रीन अपने-आप पढ़ना बंद हो सकता है। Split Screen में प्रश्न देखकर यहाँ लिखें।"; textSize = 12f; setTextColor(Color.DKGRAY); setPadding(0,6,0,6) }
         scan.setOnClickListener {
             if (!Settings.canDrawOverlays(this@MainActivity)) {
                 startActivityForResult(Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION, Uri.parse("package:$packageName")), 310)
@@ -69,7 +69,7 @@ class MainActivity : Activity() {
             }
         }
         root.addView(title); root.addView(subtitle); root.addView(intro); root.addView(key); root.addView(saveKey)
-        root.addView(language); root.addView(scan); root.addView(question, LinearLayout.LayoutParams(-1, 0, 1f)); root.addView(explain); root.addView(progress); root.addView(result)
+        root.addView(language); root.addView(scan); root.addView(question, LinearLayout.LayoutParams(-1, LinearLayout.LayoutParams.WRAP_CONTENT)); root.addView(explain); root.addView(progress); root.addView(result)
         setContentView(ScrollView(this).apply { addView(root) })
     }
 
