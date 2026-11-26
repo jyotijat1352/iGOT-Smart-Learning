@@ -127,9 +127,20 @@ class Assistant:
         )
         try:
             url = f"https://generativelanguage.googleapis.com/v1beta/models/{MODEL}:generateContent?key={self.api_key}"
-            response = requests.post(url, json={"contents": [{"parts": [{"text": prompt}]}], "generationConfig": {"temperature": 0.2}}, timeout=45)
-            if response.status_code != 200:
-                raise RuntimeError(f"Gemini API {response.status_code}: {response.text[:500]}")
+            payload = {"contents": [{"parts": [{"text": prompt}]}], "generationConfig": {"temperature": 0.2}}
+            response = None
+            # Retry temporary provider overload/rate-limit/server errors with backoff.
+            for attempt, wait_seconds in enumerate((0, 3, 8, 15), start=1):
+                if wait_seconds:
+                    self.root.after(0, self.status.set, f"Gemini server busy — retry {attempt - 1}/3…")
+                    time.sleep(wait_seconds)
+                response = requests.post(url, json=payload, timeout=60)
+                if response.status_code not in (429, 500, 502, 503, 504):
+                    break
+            if response is None or response.status_code != 200:
+                code = response.status_code if response is not None else "unknown"
+                detail = response.text[:500] if response is not None else "No response"
+                raise RuntimeError(f"Gemini API {code} after retries: {detail}")
             data = response.json()
             answer = data["candidates"][0]["content"]["parts"][0]["text"]
             self.root.after(0, self.show_answer, answer)
