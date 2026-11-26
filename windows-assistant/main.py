@@ -59,21 +59,33 @@ def read_screen_with_ocr(image):
             gray, lang="eng+hin", config=f"--oem 3 --psm {psm}",
             output_type=Output.DICT
         )
-        words = []
+        # Rebuild text by Tesseract's block/paragraph/line coordinates.
+        # Joining every word into one sentence destroys question/option structure.
+        line_words = {}
         confs = []
-        for word, conf in zip(data["text"], data["conf"]):
+        for i, word in enumerate(data["text"]):
             word = word.strip()
             try:
-                score = float(conf)
+                score = float(data["conf"][i])
             except (TypeError, ValueError):
                 score = -1
-            if word and score >= 20:
-                words.append(word)
-                confs.append(score)
-        raw = " ".join(words)
+            if not word or score < 5:
+                continue
+            key = (data["block_num"][i], data["par_num"][i], data["line_num"][i])
+            line_words.setdefault(key, []).append((data["left"][i], word, score))
+            confs.append(score)
+        lines = []
+        for key in sorted(line_words):
+            items = sorted(line_words[key], key=lambda item: item[0])
+            line = " ".join(item[1] for item in items)
+            if line.strip():
+                lines.append(line)
+        raw = "\\n".join(lines)
         cleaned = clean_ocr_text(raw)
-        # Prefer useful, confident text rather than long random page fragments.
+        # Favor readable, multi-line OCR with useful confidence.
         quality = (sum(confs) / max(1, len(confs))) + min(len(cleaned), 1200) / 100
+        if len(lines) >= 2:
+            quality += 8
         candidates.append((quality, cleaned))
     candidates.sort(key=lambda item: item[0], reverse=True)
     return candidates[0][1] if candidates else ""
